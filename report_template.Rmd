@@ -1,0 +1,246 @@
+---
+title: "Reproducible report template"
+author: "Dani cosme"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    df_print: paged
+    highlight: tango
+    theme: united
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+  word_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+# set chunk options for the document
+# include=FALSE means that this chunk will not show up in the report
+
+knitr::opts_chunk$set(echo = TRUE, dpi = 150, fig.path = "figs/") 
+# echo = TRUE means that the source code will be displayed
+# dpi = 150 sets the figure resolution
+# fig.path specifies a directory where figures will be output
+
+options(scipen = 999) #turn off scientific notation
+set.seed(65) #set seed for random number generation
+```
+
+Text describing the project
+
+
+# Prep {.tabset}
+## Load packages
+```{r, message=FALSE}
+if (!require(pacman)) {
+  install.packages('pacman')
+}
+pacman::p_load(devtools, report, install = TRUE)
+devtools::install_github("hadley/emo")
+```
+
+## Define aesthetics
+```{r}
+
+```
+
+## Define functions
+```{r}
+
+```
+
+## Load data
+```{r}
+
+```
+
+## Tidy data
+* Describe transformations made to the data
+* Describe participant and datapoint exclusions
+
+```{r}
+
+```
+
+# Sample demographics {.tabset}
+For this tutorial, these are made up demographics to illustrate how to summarize and present different characteristics
+
+## Sample size
+
+```{r}
+
+```
+
+## Geographic distribution
+```{r}
+
+```
+
+## Age
+```{r}
+
+```
+
+## Gender
+```{r}
+
+```
+
+## Race and ethnicity
+```{r}
+
+```
+
+# Data quality checks {.tabset}
+## Missing data
+```{r}
+
+```
+
+## Outliers
+```{r}
+
+```
+
+
+# Descriptive statistics {.tabset}
+Describe the items and scales used
+
+## Ns, means, and standard deviations
+```{r}
+
+```
+
+## Correlations among variables
+```{r}
+
+```
+
+# Visualize raw data {.tabset}
+## Distributions
+```{r}
+
+```
+
+# Preregistered or confirmatory analyses {.tabset}
+## Hypothesis 1 {.tabset}
+> Hypothesis text
+
+**Results**
+
+`r emo::ji("check")` 
+
+```{r}
+
+```
+
+### plot
+```{r}
+
+```
+
+### model table
+```{r}
+
+```
+
+### summary
+```{r}
+
+```
+
+### check model
+Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
+```{r}
+
+```
+
+## Hypothesis 2 {.tabset}
+> Hypothesis text
+
+**Results**
+
+`r emo::ji("check")` 
+
+```{r}
+
+```
+
+### plot
+```{r}
+
+```
+
+### model table
+```{r}
+
+```
+
+### summary
+```{r}
+
+```
+
+### check model
+Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
+```{r}
+
+```
+
+# Post-hoc or exploratory analyses {.tabset}
+## Research question 1 {.tabset}
+> Research question text
+
+**Results**
+
+`r emo::ji("check")` 
+
+```{r}
+
+```
+
+### plot
+```{r}
+
+```
+
+### model table
+```{r}
+
+```
+
+### summary
+```{r}
+
+```
+
+### check model
+Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
+```{r}
+
+```
+
+# Package citations
+```{r}
+report::cite_packages()
+```
+
+# Resources
+## R Markdown
+* [R Markdown](https://rmarkdown.rstudio.com/lesson-1.html)
+* [R Markdown reference guide](https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf?_ga=2.245086913.571798724.1647284447-1046469491.1644870105)
+
+## Themes
+* [R Markdown theme gallery](https://www.datadreaming.org/post/r-markdown-theme-gallery/)
+* [{rmdformats} theme package](https://juba.github.io/rmdformats/)
+
+## Reproducible reports in R
+* [Improve your workflow for reproducible science - Mine Çetinkaya-Rundel](https://mine-cr.com/talk/2021-improve-workflow-repro-science-oss/)
+* [R Markdown for writing reproducible scientific papers - Mike Frank & Chris Hartgerink](https://libscie.github.io/rmarkdown-workshop/handout.html)
+* [R Markdown for scientists - Nicholas Tierney](https://rmd4sci.njtierney.com/)
+

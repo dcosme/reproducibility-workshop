@@ -1,0 +1,159 @@
+---
+title: "Reproducibility Workshop"
+subtitle: ""
+author: "[Dani Cosme](https://dcosme.github.io/)"
+output:
+  xaringan::moon_reader:
+    css: ["default", "css/dcos.css", "css/dcos-fonts.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: atelier-lakeside-light
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, 
+  comment = NA, dpi = 300,
+  fig.align = "center", out.width = "80%", cache = FALSE)
+
+if(!require('tidyverse')) {
+	install.packages('tidyverse')
+}
+if(!require('devtools')) {
+	install.packages('devtools') 
+}
+if(!require('emo')) {
+	devtools::install_github("hadley/emo")
+}
+if(!require('xaringanExtra')) {
+	devtools::install_github("gadenbuie/xaringanExtra")
+}
+if(!require('countdown')) {
+	devtools::install_github("gadenbuie/countdown")
+}
+```
+
+## The reproducibility crisis
+
+--
+
+Text
+
+* 
+
+---
+
+## Reproducibility versus replicability
+
+--
+
+Text
+
+* 
+
+---
+
+## Reproducible workflows
+
+--
+
+* Whole project, start to finish
+
+--
+
+* 
+
+---
+
+## Reproducible workflows
+
+```{r errors, echo=FALSE}
+xaringanExtra::use_editable(expires = 1)
+```
+
+### What parts of your current workflow are prone to human error?
+
+.pull-left[
+  .can-edit.key-likes[
+  - 
+  ]
+]
+
+.pull-right[
+  .can-edit.key-likes[
+  - 
+  ]
+]
+
+---
+
+## Reproducible workflows
+```{r workflows, echo=FALSE}
+xaringanExtra::use_editable(expires = 1)
+```
+
+### What makes a workflow reproducible?
+
+.pull-left[
+  .can-edit.key-likes[
+  - 
+  ]
+]
+
+.pull-right[
+  .can-edit.key-likes[
+  - 
+  ]
+]
+
+
+---
+
+## Reproducible reporting with Rmarkdown
+
+--
+
+Text
+
+* 
+
+---
+
+## Project example
+
+```{r echo=FALSE, out.width=750}
+knitr::include_url("https://cnlab.github.io/self-social-sharing/")
+```
+
+`r emo::ji("link")` Click [here](https://github.com/cnlab/self-social-sharing) to access the project 
+
+
+---
+
+## Reproducible report walk-through
+
+--
+
+Text
+
+* 
+
+---
+
+## Extensions
+
+--
+
+* Version control using [`git`]() and [`github`]()
+
+--
+
+* Static website hosting with [`github`]()
+
+--
+
+* Interactive data visualization and communication using [`{shiny}`
+
+---

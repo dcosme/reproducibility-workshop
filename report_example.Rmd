@@ -1,0 +1,658 @@
+---
+title: "Reproducible report example"
+author: "Dani cosme"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    df_print: paged
+    highlight: tango
+    theme: united
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+```{r setup, include=FALSE, message=FALSE}
+# set chunk options for the document
+# include=FALSE means that this chunk will not show up in the report
+
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, cache = TRUE, dpi = 150, fig.path = "figs/") 
+# echo = TRUE means that the source code will be displayed
+# message = FALSE suppresses messages
+# warning = FALSE suppresses warnings
+# dpi = 150 sets the figure resolution
+# fig.path specifies a directory where figures will be output
+
+options(scipen = 999) #turn off scientific notation
+set.seed(65) #set seed for random number generation
+```
+
+This tutorial uses data and reproduces a subset of analyses reported in the following manuscript:
+
+[Cosme et al. (Preprint) Message self and social relevance increases intentions to share content: Correlational and causal evidence from six studies](https://psyarxiv.com/9cxfj)
+
+In these analyses, we test whether self and social relevance are causally related to sharing intentions in a preregistered experiment. Self and social relevance were experimentally manipulated by having participants explicitly reflect on the self or social relevance of messages.
+
+Participants were randomly assigned to either the self (n = 200) or social (n = 197) condition. We used a mixed design in which all participants saw a set of 5 messages in the control condition and a set of 5 messages either in the self condition or the social condition. Therefore, relationships between the experimental condition (self or social) and the control condition were assessed within-person, whereas the difference between experimental conditions was assessed between-person. We manipulated self relevance by asking participants to write about why the article matters to them personally (self condition), and social relevance by asking them to write about why the article matters to people they know (social condition). In the control condition, participants did not reflect on relevance and instead were asked to write what the article is about. Messages consisted of a news headline and brief abstract from the New York Times about general health or climate change—two important societal issues that could benefit from individual and collective action.
+
+# Prep data {.tabset}
+## Load packages
+```{r}
+if (!require(pacman)) {
+  install.packages('pacman')
+}
+pacman::p_load(devtools, report, tidyverse, lmerTest, usmap, knitr, kableExtra, reactable, performance, install = TRUE)
+devtools::install_github("hadley/emo")
+```
+
+## Define aesthetics
+```{r}
+palette_map = c("#3B9AB2", "#EBCC2A", "#F21A00")
+palette_condition = c("#ee9b00", "#bb3e03", "#005f73")
+palette_relevance = c("#bb3e03", "#f14f04", "#005F73", "#0088a3")
+palette_sharing = c("#0a9396", "#ee9b00")
+
+plot_aes = theme_minimal() +
+  theme(legend.position = "top",
+        legend.text = element_text(size = 12),
+        text = element_text(size = 16, family = "Futura Medium"),
+        axis.text = element_text(color = "black"),
+        axis.line = element_line(colour = "black"),
+        axis.ticks.y = element_blank())
+```
+
+## Define functions
+```{r}
+# MLM results table function
+table_model = function(model_data, reference = "control") {
+  model_data %>%
+  broom.mixed::tidy(conf.int = TRUE) %>%
+  filter(effect == "fixed") %>%
+  rename("SE" = std.error,
+         "t" = statistic,
+         "p" = p.value) %>%
+  select(-group, -effect) %>%
+  mutate_at(vars(-contains("term"), -contains("p.value")), round, 2) %>%
+  mutate(term = gsub("article_cond", "", term),
+         term = gsub("\\(Intercept\\)", !!reference, term),
+         term = gsub("sharing_typemsg_sharing_narrow", "sharing type", term),
+         term = gsub("msg_rel_self_between", "self-relevance", term),
+         term = gsub("msg_rel_social_between", "social relevance", term),
+         term = gsub(":", " x ", term),
+         p = ifelse(p < .001, "< .001",
+                    ifelse(p == 1, "1.000", gsub("0.(.*)", ".\\1", sprintf("%.3f", p)))),
+         `b [95% CI]` = sprintf("%.2f [%0.2f, %.2f]", estimate, conf.low, conf.high)) %>%
+  select(term, `b [95% CI]`, df, t, p) %>%
+  kable() %>%
+  kableExtra::kable_styling()
+}
+
+# source raincloud plot function
+source("https://gist.githubusercontent.com/benmarwick/2a1bb0133ff568cbe28d/raw/fb53bd97121f7f9ce947837ef1a4c65a73bffb3f/geom_flat_violin.R")
+```
+
+## Load data
+```{r}
+data_raw = read.csv("data/study6_clean_long.csv", stringsAsFactors = FALSE)
+demo = read.csv("data/study6_demo.csv", stringsAsFactors = FALSE)
+```
+
+## Tidy data
+Data transformations
+
+* None
+
+Exclusions
+
+* No participants were excluded
+
+```{r}
+# get condition information
+cond_order = data_raw %>%
+  filter(grepl("cond_order", survey_name)) %>%
+  select(SID, value) %>%
+  mutate(article_cond = strsplit(value, "\\|")) %>%
+  unnest(article_cond) %>%
+  select(-value) %>%
+  bind_cols(., data.frame(item = rep(1:10, length(unique(data_raw$SID))))) %>%
+  mutate(item = as.character(item),
+         article_cond = gsub("other", "social", article_cond))
+
+# isolate message ratings and merge with condition information
+messages = data_raw %>%
+  filter(grepl("sharing|relevance_self|relevance_social", survey_name)) %>%
+  extract(item, "item", "([0-9]+)_.*") %>%
+  mutate(value = as.numeric(value),
+         survey_name = gsub("relevance", "rel", survey_name),
+         survey_name = sprintf("msg_%s", survey_name),
+         cond = gsub("other", "social", cond)) %>%
+  left_join(., cond_order)
+
+# prepare dataframe for modeling; keep sharing type and article condition long, but pivot the relevance variables wide
+messages_mod = messages %>%
+  group_by(survey_name, SID) %>%
+  spread(survey_name, value) %>%
+  gather(sharing_type, msg_share, contains("sharing")) %>%
+  mutate(group = cond) %>%
+  select(group, SID, item, article_cond, sharing_type, msg_share, contains("rel_"))
+
+# summarize the demographic information
+demo_summary = demo %>%
+  mutate(value = ifelse(value == "Would rather not say", "Prefer not to say", value),
+         value = ifelse(is.na(value), "Not reported", value)) %>%
+  group_by(item, value) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  filter(!item %in% c("gender_4_TEXT", "race_self")) %>%
+  rename(" " = item)
+```
+
+# Sample demographics {.tabset}
+For this tutorial, these are made up demographics to illustrate how to summarize and present different characteristics
+
+## Sample size
+```{r}
+data_raw %>%
+  select(cond, SID) %>%
+  unique() %>%
+  group_by(cond) %>%
+  summarize(n = n()) %>%
+  reactable::reactable(striped = TRUE)
+```
+
+## Geographic distribution
+```{r}
+states = demo %>%
+  filter(grepl("state", item)) %>%
+  spread(item, value) %>%
+  group_by(state) %>%
+  summarize(n = n())
+
+states %>%
+  usmap::plot_usmap(data = ., values = "n", color = "grey50") +
+  scale_fill_gradient2(low = palette_map[1], mid = palette_map[2], midpoint = max(states$n) / 2, high = palette_map[3],
+                       name = "", na.value = NA, limits = c(0, max(states$n)), breaks = seq(0, max(states$n), 10)) +
+  theme(text = element_text(size = 12, family = "Futura Medium"),
+        legend.position = "right")
+```
+
+## Age
+```{r}
+demo %>%
+  filter(item == "age") %>%
+  mutate(value = as.numeric(value)) %>%
+  summarize(`age range` = sprintf("%s - %s", min(value, na.rm = TRUE), max(value, na.rm = TRUE)),
+            `mean age` = round(mean(value, na.rm = TRUE), 0),
+            `sd age` = round(sd(value, na.rm = TRUE), 0)) %>%
+  reactable::reactable(striped = TRUE)
+```
+
+## Gender
+```{r}
+demo_summary %>%
+  filter(` ` == "gender") %>%
+  mutate(total = sum(n),
+         percent = sprintf("%.0f%s", (n / total) * 100, "%")) %>%
+  select(-n, -total, -` `) %>%
+  bind_rows(data.frame(value = c("Non-binary / third gender", "Prefer to self-describe"), percent = rep("0%", 2))) %>%
+  arrange(value) %>%
+  mutate_if(is.character, ~ ifelse(is.na(.), "—", .)) %>%
+  reactable::reactable(striped = TRUE)
+```
+
+## Race and ethnicity
+```{r}
+hispanic_latinx = demo_summary %>%
+  filter(` ` == "Hispanic or Latinx") %>%
+  mutate(total = sum(n),
+         percent = sprintf("%.1f%s", (n / total) * 100, "%")) %>%
+  select(-n, -total) %>%
+  spread(value, percent) %>%
+  select(-No, - ` `) %>%
+  rename("percent" = Yes) %>%
+  mutate(`race / ethnicity` = "Hispanic or Latinx")
+
+demo_summary %>%
+  filter(` ` == "race") %>%
+  filter(!value %in% c("Hispanic", "Latino")) %>% #counted already in the hispanic_latinx item
+  mutate(total = sum(n),
+         percent = sprintf("%.1f%s", (n / total) * 100, "%"),
+         value = ifelse(is.na(value), "Not reported", value)) %>%
+  select(value, percent) %>%
+  bind_rows(data.frame(value = c("American Indian or Alaskan Native", "Native Hawaiian or Other Pacific Islander"), percent = rep("0%", 2))) %>%
+  rename("race / ethnicity" = value) %>%
+  bind_rows(., hispanic_latinx) %>%
+  arrange(`race / ethnicity`) %>%
+  reactable::reactable(striped = TRUE)
+```
+
+## Household income
+```{r}
+demo_summary %>%
+  filter(` ` == "household income") %>%
+  group_by(value) %>%
+  summarize(n = sum(n)) %>%
+  mutate(total = sum(n),
+         percent = sprintf("%.1f%s", (n / total) * 100, "%")) %>%
+  mutate(value = ifelse(is.na(value), "Not reported", value),
+         value = factor(value, levels = c("Less than $5,000", "$5,000 through $11,999", "$12,000 through $15,999", "$16,000 through $24,999", 
+                                          "$25,000 through $34,999", "$35,000 through $49,999", "$50,000 through $74,999", "$75,000 through $99,999",
+                                          "$100,000 and greater", "Not reported"))) %>%
+  arrange(value) %>%
+  select(value, percent) %>%
+  rename("household income" = value) %>%
+  mutate_if(is.character, funs(ifelse(is.na(.), "—", .))) %>%
+  reactable::reactable(striped = TRUE)
+```
+
+## Education
+```{r}
+demo_summary %>%
+  filter(` ` == "highest degree completed") %>%
+  group_by(value) %>%
+  summarize(n = sum(n)) %>%
+  mutate(total = sum(n),
+         percent = sprintf("%.1f%s", (n / total) * 100, "%")) %>%
+  mutate(value = factor(value, levels = c("Less than high school", "High school graduate (diploma)", "High school graduate (GED)", 
+                                          "Some college (1-4 years, no degree)", "Associate's degree (including occupational or academic degrees)",
+                                          "Bachelor's degree (BA, BS, etc)", "Master's degree (MA, MS, MENG, MSW, etc)",
+                                          "Professional school degree (MD, DDC, JD, etc)", "Doctorate degree (PhD, EdD, etc)"))) %>%
+  arrange(value) %>%
+  select(value, percent) %>%
+  rename("highest degree completed" = value) %>%
+  mutate_if(is.character, funs(ifelse(is.na(.), "—", .))) %>%
+  reactable::reactable(striped = TRUE)
+```
+
+# Data quality checks {.tabset}
+## Missing data
+Only a single rating (or `r round(1 / nrow(messages), 4) * 100`%) is missing
+
+```{r}
+messages %>%
+  filter(is.na(value)) %>%
+  group_by(SID, survey_name) %>%
+  summarize(n = n()) %>%
+  arrange(-n)
+```
+
+## Outliers {.tabset}
+There do not appear to be obvious outliers
+
+```{r}
+messages %>%
+  ggplot(aes(survey_name, value, fill = survey_name)) +
+  geom_flat_violin(position = position_nudge(x = .1, y = 0), color = FALSE) +
+  geom_point(aes(color = survey_name), position = position_jitter(width = .05), size = .1, alpha = .1) + 
+  geom_boxplot(width = .1, outlier.shape = NA, fill = NA) +
+  scale_fill_manual(values = palette_relevance) +
+  scale_color_manual(values = palette_relevance) +
+  labs(x = "") +
+  coord_flip() +
+  plot_aes +
+  theme(legend.position = "none")
+```
+
+
+# Descriptive statistics
+**Self-relevance (1 = strongly disagree, 100 = strongly agree)**
+
+> This message is relevant to me.
+
+**Social relevance (1 = strongly disagree, 100 = strongly agree)**
+
+> This message is relevant to people I know.
+
+**Broadcast sharing intention (1 = strongly disagree, 100 = strongly agree)**
+
+> I would share this article by posting on social media (on Facebook, Twitter, etc).
+
+**Narrowcast sharing intention (1 = strongly disagree, 100 = strongly agree)**
+
+> I would share this article directly with someone I know (via email, direct message, etc).
+
+
+```{r}
+# means
+means = messages %>%
+  group_by(survey_name) %>%
+  filter(!is.na(value)) %>%
+  summarize(N = n(),
+            `M (SD)` = sprintf("%s (%s)", round(mean(value, na.rm = TRUE), 2), round(sd(value, na.rm = TRUE), 2))) %>%
+  mutate(`scale range` = "0-100") %>%
+  select(`scale range`, everything()) %>%
+  rename("variable" = survey_name) %>%
+  mutate(variable = recode(variable, "msg_rel_social" = "social relevance",
+                           "msg_rel_self" = "self-relevance",
+                           "msg_sharing_broad" = "broadcast sharing intention",
+                           "msg_sharing_narrow" = "narrowcast sharing intention"))
+
+# correlations with broadcasting intentions
+corrs = messages %>%
+  spread(survey_name, value) %>%
+  nest() %>%
+  mutate(self_social = map(data, ~ rmcorr::rmcorr(as.factor(SID), msg_rel_self, msg_rel_social, .)),
+         self_broad = map(data, ~ rmcorr::rmcorr(as.factor(SID), msg_rel_self, msg_sharing_broad, .)),
+         social_broad = map(data, ~ rmcorr::rmcorr(as.factor(SID), msg_rel_social, msg_sharing_broad, .)),
+         broad_narrow = map(data, ~ rmcorr::rmcorr(as.factor(SID), msg_sharing_broad, msg_sharing_narrow, .)),
+         self_narrow = map(data, ~ rmcorr::rmcorr(as.factor(SID), msg_rel_self, msg_sharing_narrow, .)),
+         social_narrow = map(data, ~ rmcorr::rmcorr(as.factor(SID), msg_rel_social, msg_sharing_narrow, .))) %>%
+  select(-data) %>%
+  gather(test, model) %>%
+  group_by(test) %>%
+  filter(!is.null(model)) %>%
+  mutate(r = sprintf("%.2f [%.2f, %.2f]", model[[1]][[1]], model[[1]][[4]][1], model[[1]][[4]][2]),
+         df = model[[1]][[2]],
+         p = round(model[[1]][[3]], 3),
+         p = ifelse(p == 0, "< .001", as.character(p))) %>%
+  ungroup() %>%
+  select(test, r) %>%
+  extract(test, c("var1", "var2"), "(.*)_(.*)") %>%
+  spread(var2, r) %>%
+  select(var1, everything()) %>%
+  group_by(var1) %>%
+  mutate_if(is.character, ~ ifelse(is.na(.), "--", .)) %>%
+  mutate(var1 = ifelse(var1 == "social", "social relevance",
+                ifelse(var1 == "self", "self-relevance",
+                ifelse(var1 == "broad", "broadcast sharing intention", "narrowcast sharing intention")))) %>%
+  rename("variable" = var1,
+         "broadcast sharing intention" = broad,
+         "narrowcast sharing intention" = narrow,
+         "social relevance" = social) %>%
+  select(variable, `narrowcast sharing intention`, `broadcast sharing intention`, `social relevance`)
+
+# merge descriptors and correlations to generate manuscript table
+means %>%
+  left_join(., corrs)%>%
+  mutate_if(is.character, ~ ifelse(is.na(.), "--", .)) %>%
+  reactable::reactable(striped = TRUE)
+```
+
+# Visualize raw data {.tabset}
+The following plots visualize the raw data and do not take into account repeated measures within-participant
+
+## Condition effects
+```{r, fig.width=8}
+messages %>%
+  ggplot(aes(survey_name, value, color = article_cond)) +
+  stat_summary(fun.data = "mean_cl_boot", geom = "pointrange", size = 1) +
+  scale_color_manual(values = palette_condition) +
+  plot_aes
+```
+
+## Condition effects with data
+```{r, fig.width=8}
+messages %>%
+  ggplot(aes(survey_name, value, color = article_cond)) +
+  geom_jitter(alpha = .05) +
+  stat_summary(fun.data = "mean_cl_boot", geom = "pointrange") +
+  scale_color_manual(values = palette_condition) +
+  plot_aes
+```
+
+## Correlations between relevance and sharing
+```{r, fig.width=6, fig.height=6}
+messages %>%
+  spread(survey_name, value) %>%
+  gather(sharing, share_value, msg_sharing_broad, msg_sharing_narrow) %>%
+  gather(relevance, rel_value, msg_rel_self, msg_rel_social) %>%
+  ggplot(aes(rel_value, share_value, color = article_cond, fill = article_cond)) +
+  geom_point(alpha = .05) +
+  geom_smooth(method = "lm") +
+  facet_grid(sharing ~ relevance) +
+  scale_color_manual(values = palette_condition) +
+  scale_fill_manual(values = palette_condition) +
+  plot_aes
+```
+
+## Correlations between self and social relevance
+```{r, fig.width=5.5, fig.height=5}
+messages %>%
+  spread(survey_name, value) %>%
+  ggplot(aes(msg_rel_self, msg_rel_social, color = article_cond, fill = article_cond)) +
+  geom_point(alpha = .1) +
+  geom_smooth(method = "lm") +
+  scale_color_manual(values = palette_condition) +
+  scale_fill_manual(values = palette_condition) +
+  plot_aes
+```
+
+# Preregistered analyses {.tabset}
+The following hypotheses are preregistered. The preregistration is available on [OSF](https://osf.io/bgs5y/registrations).
+
+## Hypothesis 1 {.tabset}
+> H1: Messages in the experimental conditions will evoke higher broad- and narrowcast sharing intentions than messages in the control condition.
+
+**Results**
+
+`r emo::ji("check")` These data are consistent with the hypothesis that thinking about the self-relevance of a message increases its perceived self-relevance
+
+```{r}
+mod_h1 = lmer(msg_rel_self ~ 1 + article_cond + (1 + article_cond | SID),
+              data = messages_mod,
+              control = lmerControl(optimizer = "bobyqa"))
+```
+
+### plot
+```{r}
+ggeffects::ggpredict(mod_h1, c("article_cond")) %>%
+  data.frame() %>%
+  mutate(x = factor(x, levels = c("self", "control", "social"))) %>%
+  ggplot(aes(x = x, y = predicted, fill = x)) +
+    geom_bar(stat = "identity", position = position_dodge(.9)) +
+    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), position = position_dodge(.9), width = 0, size = 1) +
+    scale_fill_manual(name = "", values = palette_condition) +
+    labs(x = "", y = "mean predicted rating\n") +
+    plot_aes +
+    theme(legend.position = "none")
+```
+
+### model table
+```{r}
+table_model(mod_h1)
+```
+
+### summary
+```{r}
+summary(mod_h1)
+```
+
+### check model
+Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
+
+```{r, fig.width=8, fig.height=8}
+performance::check_model(mod_h1)
+```
+
+## Hypothesis 2 {.tabset}
+> H1: Messages in the social condition will be rated as more socially relevant than messages in the control condition.
+
+**Results**
+
+`r emo::ji("check")` These data are consistent with the hypothesis that thinking about the social relevance of a message increases its perceived social relevance
+
+```{r}
+mod_h2 = lmer(msg_rel_social ~ 1 + article_cond + (1 + article_cond | SID),
+              data = messages_mod,
+              control = lmerControl(optimizer = "bobyqa"))
+```
+
+### plot
+```{r}
+ggeffects::ggpredict(mod_h2, c("article_cond")) %>%
+  data.frame() %>%
+  mutate(x = factor(x, levels = c("self", "control", "social"))) %>%
+  ggplot(aes(x = x, y = predicted, fill = x)) +
+    geom_bar(stat = "identity", position = position_dodge(.9)) +
+    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), position = position_dodge(.9), width = 0, size = 1) +
+    scale_fill_manual(name = "", values = palette_condition) +
+    labs(x = "", y = "mean predicted rating\n") +
+    plot_aes +
+    theme(legend.position = "none")
+```
+
+### model table
+```{r}
+table_model(mod_h2)
+```
+
+### summary
+```{r}
+summary(mod_h2)
+```
+
+### check model
+Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
+
+```{r, fig.width=8, fig.height=8}
+performance::check_model(mod_h2)
+```
+
+## Hypothesis 3 & 4 {.tabset}
+> H3: Messages in the experimental conditions will evoke higher broad- and narrowcast sharing intentions than messages in the control condition.
+
+> H4: We will test whether the experimental conditions differ in their effects on broadcast and narrowcast sharing intentions. We expect that the social relevance manipulation will have a stronger effect on narrowcast than broadcast sharing intentions, whereas the self-relevance manipulation will have a stronger effect on broadcast than narrowcast sharing intentions.
+
+**Results**
+
+`r emo::ji("check")` These data are consistent with the hypothesis that the self and social conditions increase sharing intentions
+
+`r emo::ji("check")` These data are consistent with the hypothesis that the social condition more strongly increases narrowcast than broadcast sharing intentions
+
+`r emo::ji("x")` These data are inconsistent with the hypothesis that the self condition more strongly increases broadcast than narrowcast sharing intentions
+
+```{r}
+mod_h3_h4 = lmer(msg_share ~ 1 + article_cond*sharing_type + (1 + sharing_type | SID),
+              data = messages_mod,
+              control = lmerControl(optimizer = "bobyqa"))
+```
+
+### plot
+```{r}
+ggeffects::ggpredict(mod_h3_h4, c("article_cond", "sharing_type")) %>%
+  data.frame() %>%
+  mutate(x = factor(x, levels = c("self", "control", "social")),
+         group = ifelse(group == "msg_sharing_broad", "broadcast sharing", "narrowcast sharing")) %>%
+  ggplot(aes(x = x, y = predicted, color = x)) +
+  geom_pointrange(aes(ymin = conf.low, ymax = conf.high, alpha = group), position = position_dodge(.5), size = 1) +
+  coord_flip() +
+  scale_color_manual(name = "", values = palette_condition, guide = "none") +
+  scale_alpha_manual(name = "", values = c(1, .5)) +
+  labs(x = "", y = "\nmean predicted sharing intention rating") +
+  scale_y_continuous(limits = c(40, 60)) +
+  plot_aes +
+  theme(legend.position = "top")
+```
+
+### model table
+```{r}
+table_model(mod_h3_h4)
+```
+
+### summary
+```{r}
+summary(mod_h3_h4)
+```
+
+### check model
+Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
+
+```{r, fig.width=11, fig.height=12}
+performance::check_model(mod_h3_h4)
+```
+
+# Exploratory analyses {.tabset}
+## Research question 1 {.tabset}
+> We will also explore the degree to which the effects of the experimental manipulations are specific to their relevance target. Does the self condition increase self-relevance more strongly than the social condition?
+
+**Results**
+
+`r emo::ji("check")` These data are consistent with the hypothesis that the self condition increases self-relevance more strongly than the social condition
+
+```{r}
+mod_e1 = lmer(msg_rel_self ~ 1 + article_cond + (1 + article_cond | SID),
+              data = filter(messages_mod, !article_cond == "control"), 
+              control = lmerControl(optimizer = "bobyqa"))
+```
+
+### plot
+```{r}
+ggeffects::ggpredict(mod_e1, c("article_cond")) %>%
+  data.frame() %>%
+  mutate(x = factor(x, levels = c("self", "social"))) %>%
+  ggplot(aes(x = x, y = predicted, fill = x)) +
+    geom_bar(stat = "identity", position = position_dodge(.9)) +
+    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), position = position_dodge(.9), width = 0, size = 1) +
+    scale_fill_manual(name = "", values = c(palette_condition[1], palette_condition[3])) +
+    labs(x = "", y = "mean predicted rating\n") +
+    plot_aes +
+    theme(legend.position = "none")
+```
+
+### model table
+```{r}
+table_model(mod_e1, reference = "self")
+```
+
+### summary
+```{r}
+summary(mod_e1)
+```
+
+### check model
+Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
+
+```{r, fig.width=8, fig.height=8}
+performance::check_model(mod_e1)
+```
+
+## Research question 2 {.tabset}
+> We will also explore the degree to which the effects of the experimental manipulations are specific to their relevance target. Does the social condition increase social relevance more strongly than the self condition?
+
+**Results**
+
+`r emo::ji("x")` These data are inconsistent with the hypothesis that the social condition increases social relevance more strongly than the self condition
+
+```{r}
+mod_e2 = lmer(msg_rel_social ~ 1 + article_cond + (1 + article_cond | SID),
+              data = filter(messages_mod, !article_cond == "control"), 
+              control = lmerControl(optimizer = "bobyqa"))
+```
+
+### plot
+```{r}
+ggeffects::ggpredict(mod_e2, c("article_cond")) %>%
+  data.frame() %>%
+  mutate(x = factor(x, levels = c("self", "social"))) %>%
+  ggplot(aes(x = x, y = predicted, fill = x)) +
+    geom_bar(stat = "identity", position = position_dodge(.9)) +
+    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), position = position_dodge(.9), width = 0, size = 1) +
+    scale_fill_manual(name = "", values = c(palette_condition[1], palette_condition[3])) +
+    labs(x = "", y = "mean predicted rating\n") +
+    plot_aes +
+    theme(legend.position = "none")
+```
+
+### model table
+```{r}
+table_model(mod_e2, reference = "self")
+```
+
+### summary
+```{r}
+summary(mod_e2)
+```
+
+### check model
+Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
+
+```{r, fig.width=8, fig.height=8}
+performance::check_model(mod_e2)
+```
+
+# Package citations
+```{r}
+report::cite_packages()
+```
