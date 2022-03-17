@@ -540,7 +540,7 @@ mod_h1 = lmer(msg_rel_self ~ 1 + article_cond + (1 + article_cond | SID),
 ```
 
 ### Plot
-```{r, out.width="65%"}
+```{r hypothesis_1, out.width="65%"}
 ggeffects::ggpredict(mod_h1, c("article_cond")) %>%
   data.frame() %>%
   mutate(x = factor(x, levels = c("self", "control", "social"))) %>%
@@ -583,8 +583,8 @@ mod_h2 = lmer(msg_rel_social ~ 1 + article_cond + (1 + article_cond | SID),
               control = lmerControl(optimizer = "bobyqa"))
 ```
 
-### plot
-```{r, out.width="65%"}
+### Plot
+```{r hypothesis_2, out.width="65%"}
 ggeffects::ggpredict(mod_h2, c("article_cond")) %>%
   data.frame() %>%
   mutate(x = factor(x, levels = c("self", "control", "social"))) %>%
@@ -597,17 +597,17 @@ ggeffects::ggpredict(mod_h2, c("article_cond")) %>%
     theme(legend.position = "none")
 ```
 
-### model table
+### Model table
 ```{r}
 table_model(mod_h2)
 ```
 
-### summary
+### Summary
 ```{r}
 summary(mod_h2)
 ```
 
-### check model
+### Check model
 Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
 
 ```{r, fig.width=8, fig.height=8}
@@ -634,7 +634,7 @@ mod_h3_h4 = lmer(msg_share ~ 1 + article_cond*sharing_type + (1 + sharing_type |
 ```
 
 ### Plot
-```{r, out.width="65%"}
+```{r hypothesis_3_4, out.width="65%"}
 ggeffects::ggpredict(mod_h3_h4, c("article_cond", "sharing_type")) %>%
   data.frame() %>%
   mutate(x = factor(x, levels = c("self", "control", "social")),
@@ -682,7 +682,7 @@ mod_e1 = lmer(msg_rel_self ~ 1 + article_cond + (1 + article_cond | SID),
 ```
 
 ### Plot
-```{r, out.width="65%"}
+```{r exploratory_1, out.width="65%"}
 ggeffects::ggpredict(mod_e1, c("article_cond")) %>%
   data.frame() %>%
   mutate(x = factor(x, levels = c("self", "social"))) %>%
@@ -726,7 +726,7 @@ mod_e2 = lmer(msg_rel_social ~ 1 + article_cond + (1 + article_cond | SID),
 ```
 
 ### Plot
-```{r, out.width="65%"}
+```{r exploratory_2, out.width="65%"}
 ggeffects::ggpredict(mod_e2, c("article_cond")) %>%
   data.frame() %>%
   mutate(x = factor(x, levels = c("self", "social"))) %>%
