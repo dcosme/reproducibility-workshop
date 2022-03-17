@@ -231,6 +231,13 @@ report::cite_packages()
 ```
 
 # Resources
+## Reproducible reports in R
+* [Improve your workflow for reproducible science - Mine Çetinkaya-Rundel](https://mine-cr.com/talk/2021-improve-workflow-repro-science-oss/)
+* [R Markdown for writing reproducible scientific papers - Mike Frank & Chris Hartgerink](https://libscie.github.io/rmarkdown-workshop/handout.html)
+* [R Markdown for scientists - Nicholas Tierney](https://rmd4sci.njtierney.com/)
+* [Reproducible Analysis with R](https://nceas.github.io/sasap-training/materials/reproducible_research_in_r_fairbanks/)
+* [Reproducible science curriculum](https://github.com/Reproducible-Science-Curriculum)
+
 ## R Markdown
 * [R Markdown](https://rmarkdown.rstudio.com/lesson-1.html)
 * [R Markdown reference guide](https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf?_ga=2.245086913.571798724.1647284447-1046469491.1644870105)
@@ -238,9 +245,4 @@ report::cite_packages()
 ## Themes
 * [R Markdown theme gallery](https://www.datadreaming.org/post/r-markdown-theme-gallery/)
 * [{rmdformats} theme package](https://juba.github.io/rmdformats/)
-
-## Reproducible reports in R
-* [Improve your workflow for reproducible science - Mine Çetinkaya-Rundel](https://mine-cr.com/talk/2021-improve-workflow-repro-science-oss/)
-* [R Markdown for writing reproducible scientific papers - Mike Frank & Chris Hartgerink](https://libscie.github.io/rmarkdown-workshop/handout.html)
-* [R Markdown for scientists - Nicholas Tierney](https://rmd4sci.njtierney.com/)
 

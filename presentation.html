@@ -6,7 +6,7 @@
     <meta name="author" content="Dani Cosme" />
     <script src="libs/header-attrs/header-attrs.js"></script>
     <link href="libs/remark-css/default.css" rel="stylesheet" />
-    <script type="application/json" id="xaringanExtra-editable-docid">{"id":"x8412e9d8eee45088814a0367c72b12e","expires":1}</script>
+    <script type="application/json" id="xaringanExtra-editable-docid">{"id":"b81977c99298436b97ef38c5f4c49844","expires":1}</script>
     <script src="libs/himalaya/himalaya.js"></script>
     <script src="libs/js-cookie/js.cookie.js"></script>
     <link href="libs/editable/editable.css" rel="stylesheet" />
@@ -19,6 +19,7 @@
 class: center, middle, inverse, title-slide
 
 # Reproducibility Workshop
+## COMM 783 | University of Pennsylvania
 ### <a href="https://dcosme.github.io/">Dani Cosme</a>
 
 ---
@@ -28,11 +29,41 @@ class: center, middle, inverse, title-slide
 
 ## The reproducibility crisis
 
---
+&lt;img src="imgs/crisis.png" width="65%" style="display: block; margin: auto;" /&gt;
 
-Text
+.footnote[🔗 [1,500 scientists lift the lid on reproducibility | Monya Baker](https://www.nature.com/articles/533452a)]
 
-* 
+---
+
+## The reproducibility crisis
+
+&lt;img src="imgs/crisis.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+&gt; "**More than 70%** of researchers have tried and failed to reproduce another scientist's experiments, and **more than half** have failed to reproduce their own experiments." 
+
+.footnote[🔗 [1,500 scientists lift the lid on reproducibility | Monya Baker](https://www.nature.com/articles/533452a)]
+
+---
+
+## The reproducibility crisis
+
+.pull-left[
+
+* Attempted to replicate 100 published studies based on the original materials using high powered designs
+
+* The mean replication effect size was **half the magnitude** (*M* = 0.20, *SD* = 0.26)
+
+* **36%** of replication results were statistically significant (versus 97% of the original studies)
+
+* **39%** of the replications were subjectively rated as replicating the original result
+]
+
+.pull-right[
+&lt;img src="imgs/replication_OSC.jpeg" width="100%" style="display: block; margin: auto;" /&gt;
+]
+
+.footnote[🔗 [Estimating the reproducibility of psychological science | Open Science Collaboration](https://www.science.org/doi/10.1126/science.aac4716)]
+
 
 ---
 
@@ -40,37 +71,40 @@ Text
 
 --
 
-Text
+**Reproducibility**
 
-* 
-
----
-
-## Reproducible workflows
+* Can a research finding be verified from the same data and code?
 
 --
 
-* Whole project, start to finish
+* Same research question, **same** data, *hopefully* the same results
 
 --
 
-* 
+**Replicability**
+
+* Can a research finding be confirmed using the same methods, protocols and equipment?
+
+--
+
+* Same research question, **new** data, *hopefully* the same results
+
+.footnote[Content adapted from [Reproducible Research Introduction from Data Carpentry](https://datacarpentry.org/rr-intro/01-introduction/index.html)]
 
 ---
 
-## Reproducible workflows
+## Why does it matter?
 
-
-
-### What parts of your current workflow are prone to human error?
 
 .pull-left[
+  For society
   .can-edit.key-likes[
   - 
   ]
 ]
 
 .pull-right[
+  For ourselves
   .can-edit.key-likes[
   - 
   ]
@@ -80,50 +114,70 @@ Text
 
 ## Reproducible workflows
 
+--
 
-### What makes a workflow reproducible?
+* The whole project: from design to publication and dissemination 
+
+--
+
+.footnote[Content adapted from [Reproducible Research Introduction from Data Carpentry](https://datacarpentry.org/rr-intro/01-introduction/index.html)]
+  
+* Facets of reproducibility:
+
+  * **Documentation**: it's clear what happened and why; e.g. code is available and commented
+
+--
+
+  * **Organization**: it's clear where everything can be found; e.g. consistent file structures and naming conventions 
+
+--
+
+  * **Automation**: it's simple to reproduce processes; e.g. an analysis script can be executed to produce the same results
+
+--
+
+  * **Dissemination**: it's possible for others to reproduce your work; e.g. materials, code, and data (if possible) are publicly shared
+
+---
+
+## Reproducible workflows
+
+
+
+Reflect on your current workflow 
+
+--
 
 .pull-left[
+  Less reproducible
   .can-edit.key-likes[
   - 
   ]
 ]
 
 .pull-right[
+  More reproducible
   .can-edit.key-likes[
   - 
   ]
 ]
 
-
 ---
 
-## Reproducible reporting with Rmarkdown
-
---
-
-Text
-
-* 
-
----
-
-## Project example
+## Reproducible reporting with R Markdown
+### Project example
 
 &lt;iframe src="https://cnlab.github.io/self-social-sharing/" width="750" height="400px" data-external="1"&gt;&lt;/iframe&gt;
 
-🔗 Click [here](https://github.com/cnlab/self-social-sharing) to access the project 
-
+🔗 [Project repository on GitHub](https://github.com/cnlab/self-social-sharing) | [OSF project page](https://osf.io/bgs5y/)
 
 ---
 
-## Reproducible report walk-through
+## Reproducible report walk through
 
---
+&lt;iframe src="https://dcosme.github.io/reproducibility-workshop/" width="750" height="400px" data-external="1"&gt;&lt;/iframe&gt;
 
-Text
-
-* 
+🔗 [Workshop repository on GitHub](https://dcosme.github.io/reproducibility-workshop)
 
 ---
 
@@ -131,17 +185,29 @@ Text
 
 --
 
-* Version control using [`git`]() and [`github`]()
+* Version control using [`git`](https://git-scm.com/) and [`github`](https://github.com/)
 
 --
 
-* Static website hosting with [`github`]()
+* Static website hosting with [`github`](https://pages.github.com/)
 
 --
 
-* Interactive data visualization and communication using [`{shiny}`
+* [Manuscript production using R Markdown](https://osf.io/q395s)
+
+--
+
+* Interactive data visualization and communication using [`{shiny}`](https://shinyapps.io/)
 
 ---
+class: center, middle
+
+# Thank you!
+
+&lt;br&gt;
+
+### Workshop materials are available at: [github.com/dcosme/reproducibility-workshop](https://github.com/dcosme/reproducibility-workshop)
+
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
