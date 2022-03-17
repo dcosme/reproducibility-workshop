@@ -18,10 +18,11 @@ output:
 # set chunk options for the document
 # include=FALSE means that this chunk will not show up in the report
 
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, cache = TRUE, dpi = 150, fig.path = "figs/") 
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, cache = FALSE, dpi = 150, fig.path = "figs/") 
 # echo = TRUE means that the source code will be displayed
 # message = FALSE suppresses messages
 # warning = FALSE suppresses warnings
+# cache = FALSE recompiles from scratch each time you knit 
 # dpi = 150 sets the figure resolution
 # fig.path specifies a directory where figures will be output
 
@@ -43,7 +44,7 @@ Participants were randomly assigned to either the self (n = 200) or social (n = 
 if (!require(pacman)) {
   install.packages('pacman')
 }
-pacman::p_load(devtools, report, tidyverse, lmerTest, usmap, knitr, kableExtra, reactable, performance, install = TRUE)
+pacman::p_load(devtools, report, tidyverse, lmerTest, usmap, knitr, kableExtra, reactable, performance, wesanderson, install = TRUE)
 devtools::install_github("hadley/emo")
 ```
 
@@ -51,8 +52,6 @@ devtools::install_github("hadley/emo")
 ```{r}
 palette_map = c("#3B9AB2", "#EBCC2A", "#F21A00")
 palette_condition = c("#ee9b00", "#bb3e03", "#005f73")
-palette_relevance = c("#bb3e03", "#f14f04", "#005F73", "#0088a3")
-palette_sharing = c("#0a9396", "#ee9b00")
 
 plot_aes = theme_minimal() +
   theme(legend.position = "top",
@@ -154,7 +153,7 @@ For this tutorial, these are made up demographics to illustrate how to summarize
 
 ## Sample size
 ```{r}
-data_raw %>%
+messages %>%
   select(cond, SID) %>%
   unique() %>%
   group_by(cond) %>%
@@ -178,7 +177,8 @@ states %>%
         legend.position = "right")
 ```
 
-## Age
+## Age {.tabset}
+### Table
 ```{r}
 demo %>%
   filter(item == "age") %>%
@@ -189,26 +189,58 @@ demo %>%
   reactable::reactable(striped = TRUE)
 ```
 
-## Gender
+### Plot
+```{r}
+demo %>%
+  filter(item == "age") %>%
+  mutate(value = as.numeric(value)) %>%
+  ggplot(aes(value)) +
+  geom_density(fill = "#3B9AB2", color = NA) + 
+  labs(x = "") +
+  plot_aes +
+  theme(legend.position = "right")
+```
+
+## Gender {.tabset}
+### Table
 ```{r}
 demo_summary %>%
   filter(` ` == "gender") %>%
   mutate(total = sum(n),
          percent = sprintf("%.0f%s", (n / total) * 100, "%")) %>%
-  select(-n, -total, -` `) %>%
-  bind_rows(data.frame(value = c("Non-binary / third gender", "Prefer to self-describe"), percent = rep("0%", 2))) %>%
+  select(-total, -` `) %>%
+  bind_rows(data.frame(value = c("Non-binary / third gender", "Prefer to self-describe"), n = rep(0, 2), percent = rep("0%", 2))) %>%
   arrange(value) %>%
-  mutate_if(is.character, ~ ifelse(is.na(.), "—", .)) %>%
+  rename("gender" = value) %>%
   reactable::reactable(striped = TRUE)
 ```
 
-## Race and ethnicity
+### Plot
+```{r, fig.width=12, fig.height=3}
+demo_summary %>%
+  filter(` ` == "gender") %>%
+  mutate(total = sum(n),
+         percent = (n / total) * 100) %>%
+  select(-total, -` `) %>%
+  bind_rows(data.frame(value = c("Non-binary / third gender", "Prefer to self-describe"), n = rep(0, 2), percent = rep(0, 2))) %>%
+  ggplot(aes("", percent, fill = reorder(value, percent))) +
+  geom_bar(stat = "identity") + 
+  coord_flip() +
+  scale_fill_manual(name = "", values = wesanderson::wes_palette("Zissou1", n = 5, type = "continuous")) +
+  labs(x = "") +
+  plot_aes +
+  theme(legend.position = "right")
+```
+
+
+## Race and ethnicity {.tabset}
+### Table
 ```{r}
 hispanic_latinx = demo_summary %>%
   filter(` ` == "Hispanic or Latinx") %>%
   mutate(total = sum(n),
          percent = sprintf("%.1f%s", (n / total) * 100, "%")) %>%
-  select(-n, -total) %>%
+  select(-total) %>%
   spread(value, percent) %>%
   select(-No, - ` `) %>%
   rename("percent" = Yes) %>%
@@ -220,34 +252,80 @@ demo_summary %>%
   mutate(total = sum(n),
          percent = sprintf("%.1f%s", (n / total) * 100, "%"),
          value = ifelse(is.na(value), "Not reported", value)) %>%
-  select(value, percent) %>%
-  bind_rows(data.frame(value = c("American Indian or Alaskan Native", "Native Hawaiian or Other Pacific Islander"), percent = rep("0%", 2))) %>%
-  rename("race / ethnicity" = value) %>%
+  select(value, n, percent) %>%
+  bind_rows(data.frame(value = c("American Indian or Alaskan Native", "Native Hawaiian or Other Pacific Islander"), n = rep(0, 2), percent = rep("0%", 2))) %>%
+  rename("race & ethnicity" = value) %>%
   bind_rows(., hispanic_latinx) %>%
   arrange(`race / ethnicity`) %>%
   reactable::reactable(striped = TRUE)
 ```
 
-## Household income
+### Plot
+```{r, fig.width=12, fig.height=3}
+demo_summary %>%
+  filter(` ` == "race") %>%
+  filter(!value %in% c("Hispanic", "Latino")) %>% #counted already in the hispanic_latinx item
+  mutate(total = sum(n),
+         percent = (n / total) * 100,
+         value = ifelse(is.na(value), "Not reported", value)) %>%
+  select(value, n, percent) %>%
+  bind_rows(data.frame(value = c("American Indian or Alaskan Native", "Native Hawaiian or Other Pacific Islander"), n = rep(0, 2), percent = rep(0, 2))) %>%
+  ggplot(aes("", percent, fill = reorder(value, percent))) +
+  geom_bar(stat = "identity") + 
+  coord_flip() +
+  scale_fill_manual(name = "", values = wesanderson::wes_palette("Zissou1", n = 7, type = "continuous")) +
+  labs(x = "") +
+  plot_aes +
+  theme(legend.position = "right")
+```
+
+## Household income {.tabset}
+### Table
 ```{r}
 demo_summary %>%
   filter(` ` == "household income") %>%
   group_by(value) %>%
   summarize(n = sum(n)) %>%
   mutate(total = sum(n),
-         percent = sprintf("%.1f%s", (n / total) * 100, "%")) %>%
-  mutate(value = ifelse(is.na(value), "Not reported", value),
+         percent = sprintf("%.1f%s", (n / total) * 100, "%"),
+         value = ifelse(is.na(value), "Not reported", value),
          value = factor(value, levels = c("Less than $5,000", "$5,000 through $11,999", "$12,000 through $15,999", "$16,000 through $24,999", 
                                           "$25,000 through $34,999", "$35,000 through $49,999", "$50,000 through $74,999", "$75,000 through $99,999",
                                           "$100,000 and greater", "Not reported"))) %>%
   arrange(value) %>%
-  select(value, percent) %>%
+  select(value, n, percent) %>%
   rename("household income" = value) %>%
   mutate_if(is.character, funs(ifelse(is.na(.), "—", .))) %>%
   reactable::reactable(striped = TRUE)
 ```
 
-## Education
+### Plot
+```{r, fig.width=10, fig.height=4}
+demo_summary %>%
+  filter(` ` == "household income") %>%
+  group_by(value) %>%
+  summarize(n = sum(n)) %>%
+  mutate(total = sum(n),
+         percent = (n / total) * 100,
+         value = ifelse(is.na(value), "Not reported", value),
+         value = factor(value, levels = c("Less than $5,000", "$5,000 through $11,999", "$12,000 through $15,999", "$16,000 through $24,999", 
+                                          "$25,000 through $34,999", "$35,000 through $49,999", "$50,000 through $74,999", "$75,000 through $99,999",
+                                          "$100,000 and greater", "Not reported"))) %>%
+  arrange(value) %>%
+  select(value, n, percent)  %>%
+  ggplot(aes(value, percent, fill = value)) +
+  geom_histogram(stat = "identity") + 
+  geom_text(aes(label = sprintf("%.1f%s", percent, "%")), nudge_y = 2) + 
+  coord_flip() + 
+  scale_fill_manual(name = "", values = wesanderson::wes_palette("Zissou1", n = 9, type = "continuous")) +
+  labs(x = "") +
+  plot_aes +
+  theme(legend.position = "none")
+  
+```
+
+## Education {.tabset}
+### Table
 ```{r}
 demo_summary %>%
   filter(` ` == "highest degree completed") %>%
@@ -255,15 +333,41 @@ demo_summary %>%
   summarize(n = sum(n)) %>%
   mutate(total = sum(n),
          percent = sprintf("%.1f%s", (n / total) * 100, "%")) %>%
+  bind_rows(data.frame(value = "Less than high school", n = 0, percent = "0%")) %>%
   mutate(value = factor(value, levels = c("Less than high school", "High school graduate (diploma)", "High school graduate (GED)", 
                                           "Some college (1-4 years, no degree)", "Associate's degree (including occupational or academic degrees)",
                                           "Bachelor's degree (BA, BS, etc)", "Master's degree (MA, MS, MENG, MSW, etc)",
                                           "Professional school degree (MD, DDC, JD, etc)", "Doctorate degree (PhD, EdD, etc)"))) %>%
   arrange(value) %>%
-  select(value, percent) %>%
+  select(value, n, percent) %>%
   rename("highest degree completed" = value) %>%
   mutate_if(is.character, funs(ifelse(is.na(.), "—", .))) %>%
   reactable::reactable(striped = TRUE)
+```
+
+### Plot
+```{r, fig.width=12, fig.height=4.5}
+demo_summary %>%
+  filter(` ` == "highest degree completed") %>%
+  group_by(value) %>%
+  summarize(n = sum(n)) %>%
+  mutate(total = sum(n),
+         percent = (n / total) * 100) %>%
+  bind_rows(data.frame(value = "Less than high school", n = 0, percent = 0)) %>%
+  mutate(value = factor(value, levels = c("Less than high school", "High school graduate (diploma)", "High school graduate (GED)", 
+                                          "Some college (1-4 years, no degree)", "Associate's degree (including occupational or academic degrees)",
+                                          "Bachelor's degree (BA, BS, etc)", "Master's degree (MA, MS, MENG, MSW, etc)",
+                                          "Professional school degree (MD, DDC, JD, etc)", "Doctorate degree (PhD, EdD, etc)"))) %>%
+  arrange(value) %>%
+  select(value, n, percent)  %>%
+  ggplot(aes(value, percent, fill = value)) +
+  geom_histogram(stat = "identity") + 
+  geom_text(aes(label = sprintf("%.1f%s", percent, "%")), nudge_y = 3) + 
+  coord_flip() + 
+  scale_fill_manual(name = "", values = wesanderson::wes_palette("Zissou1", n = 8, type = "continuous")) +
+  labs(x = "") +
+  plot_aes +
+  theme(legend.position = "none")
 ```
 
 # Data quality checks {.tabset}
@@ -287,8 +391,8 @@ messages %>%
   geom_flat_violin(position = position_nudge(x = .1, y = 0), color = FALSE) +
   geom_point(aes(color = survey_name), position = position_jitter(width = .05), size = .1, alpha = .1) + 
   geom_boxplot(width = .1, outlier.shape = NA, fill = NA) +
-  scale_fill_manual(values = palette_relevance) +
-  scale_color_manual(values = palette_relevance) +
+  scale_fill_manual(values = wesanderson::wes_palette("Zissou1", n = 4, type = "continuous")) +
+  scale_color_manual(values = wesanderson::wes_palette("Zissou1", n = 4, type = "continuous")) +
   labs(x = "") +
   coord_flip() +
   plot_aes +
@@ -329,7 +433,7 @@ means = messages %>%
                            "msg_sharing_broad" = "broadcast sharing intention",
                            "msg_sharing_narrow" = "narrowcast sharing intention"))
 
-# correlations with broadcasting intentions
+# repeated measures correlations
 corrs = messages %>%
   spread(survey_name, value) %>%
   nest() %>%
@@ -435,8 +539,8 @@ mod_h1 = lmer(msg_rel_self ~ 1 + article_cond + (1 + article_cond | SID),
               control = lmerControl(optimizer = "bobyqa"))
 ```
 
-### plot
-```{r}
+### Plot
+```{r, out.width="65%"}
 ggeffects::ggpredict(mod_h1, c("article_cond")) %>%
   data.frame() %>%
   mutate(x = factor(x, levels = c("self", "control", "social"))) %>%
@@ -449,17 +553,17 @@ ggeffects::ggpredict(mod_h1, c("article_cond")) %>%
     theme(legend.position = "none")
 ```
 
-### model table
+### Model table
 ```{r}
 table_model(mod_h1)
 ```
 
-### summary
+### Summary
 ```{r}
 summary(mod_h1)
 ```
 
-### check model
+### Check model
 Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
 
 ```{r, fig.width=8, fig.height=8}
@@ -480,7 +584,7 @@ mod_h2 = lmer(msg_rel_social ~ 1 + article_cond + (1 + article_cond | SID),
 ```
 
 ### plot
-```{r}
+```{r, out.width="65%"}
 ggeffects::ggpredict(mod_h2, c("article_cond")) %>%
   data.frame() %>%
   mutate(x = factor(x, levels = c("self", "control", "social"))) %>%
@@ -529,14 +633,14 @@ mod_h3_h4 = lmer(msg_share ~ 1 + article_cond*sharing_type + (1 + sharing_type |
               control = lmerControl(optimizer = "bobyqa"))
 ```
 
-### plot
-```{r}
+### Plot
+```{r, out.width="65%"}
 ggeffects::ggpredict(mod_h3_h4, c("article_cond", "sharing_type")) %>%
   data.frame() %>%
   mutate(x = factor(x, levels = c("self", "control", "social")),
          group = ifelse(group == "msg_sharing_broad", "broadcast sharing", "narrowcast sharing")) %>%
   ggplot(aes(x = x, y = predicted, color = x)) +
-  geom_pointrange(aes(ymin = conf.low, ymax = conf.high, alpha = group), position = position_dodge(.5), size = 1) +
+  geom_pointrange(aes(ymin = conf.low, ymax = conf.high, alpha = group), position = position_dodge(.5), size = 2) +
   coord_flip() +
   scale_color_manual(name = "", values = palette_condition, guide = "none") +
   scale_alpha_manual(name = "", values = c(1, .5)) +
@@ -546,17 +650,17 @@ ggeffects::ggpredict(mod_h3_h4, c("article_cond", "sharing_type")) %>%
   theme(legend.position = "top")
 ```
 
-### model table
+### Model table
 ```{r}
 table_model(mod_h3_h4)
 ```
 
-### summary
+### Summary
 ```{r}
 summary(mod_h3_h4)
 ```
 
-### check model
+### Check model
 Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
 
 ```{r, fig.width=11, fig.height=12}
@@ -577,8 +681,8 @@ mod_e1 = lmer(msg_rel_self ~ 1 + article_cond + (1 + article_cond | SID),
               control = lmerControl(optimizer = "bobyqa"))
 ```
 
-### plot
-```{r}
+### Plot
+```{r, out.width="65%"}
 ggeffects::ggpredict(mod_e1, c("article_cond")) %>%
   data.frame() %>%
   mutate(x = factor(x, levels = c("self", "social"))) %>%
@@ -591,17 +695,17 @@ ggeffects::ggpredict(mod_e1, c("article_cond")) %>%
     theme(legend.position = "none")
 ```
 
-### model table
+### Model table
 ```{r}
 table_model(mod_e1, reference = "self")
 ```
 
-### summary
+### Summary
 ```{r}
 summary(mod_e1)
 ```
 
-### check model
+### Check model
 Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
 
 ```{r, fig.width=8, fig.height=8}
@@ -621,8 +725,8 @@ mod_e2 = lmer(msg_rel_social ~ 1 + article_cond + (1 + article_cond | SID),
               control = lmerControl(optimizer = "bobyqa"))
 ```
 
-### plot
-```{r}
+### Plot
+```{r, out.width="65%"}
 ggeffects::ggpredict(mod_e2, c("article_cond")) %>%
   data.frame() %>%
   mutate(x = factor(x, levels = c("self", "social"))) %>%
@@ -635,17 +739,17 @@ ggeffects::ggpredict(mod_e2, c("article_cond")) %>%
     theme(legend.position = "none")
 ```
 
-### model table
+### Model table
 ```{r}
 table_model(mod_e2, reference = "self")
 ```
 
-### summary
+### Summary
 ```{r}
 summary(mod_e2)
 ```
 
-### check model
+### Check model
 Check model assumptions using the [`{performance}` package](https://easystats.github.io/performance/)
 
 ```{r, fig.width=8, fig.height=8}
