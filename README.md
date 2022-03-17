@@ -1,5 +1,5 @@
 # reproducibility-workshop
-Reproducibility and replicability workshop presented at COMM 783 at the University of Pennsylvania 
+Reproducibility workshop presented to COMM 783 at the University of Pennsylvania 
 
 The slides can be viewed [here](https://dcosme.github.io/reproducibility-workshop/presentation)
 
